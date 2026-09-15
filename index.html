@@ -389,32 +389,72 @@
         // -----------------------------------------------------------------
         // GOOGLE FREE IMPLEMENTATION
         // -----------------------------------------------------------------
-        let googleRecognition = null;
+        let googleRecognition = null;        function renderConversations() {
+            let viHtml = "";
+            let zhHtml = "";
+            
+            globalConversations.forEach(c => {
+                let colorClass = `speaker-color-${c.speakerId || 1}`;
+                
+                let viSentences = c.viText ? (c.viText.match(/[^.?!。？！]+[.?!。？！]*/g) || [c.viText]) : [];
+                let zhSentences = c.zhText ? (c.zhText.match(/[^.?!。？！]+[.?!。？！]*/g) || [c.zhText]) : [];
+
+                let maxLen = Math.max(viSentences.length, zhSentences.length, 1);
+                
+                for (let i = 0; i < maxLen; i++) {
+                    let v = (viSentences[i] || "").trim();
+                    let z = (zhSentences[i] || "").trim();
+                    let isLast = (i === maxLen - 1);
+
+                    // Tiếng Việt Box
+                    if (v || (isLast && c.viInterim) || (isLast && c.isTranslating && c.speakerId == 2)) {
+                        viHtml += `<div style="margin-bottom: 8px;">`;
+                        if (v) viHtml += `<span class="${colorClass}">${v}</span> `;
+                        if (isLast && c.viInterim) viHtml += `<span style="color: #6b7280; font-style: italic;">${c.viInterim}</span>`;
+                        if (isLast && c.isTranslating && c.speakerId == 2) {
+                            viHtml += `<span style="color: #3b82f6; font-style: italic; font-size: 0.9em;"> ⏳ Đang dịch...</span>`;
+                        }
+                        viHtml += `</div>`;
+                    }
+
+                    // Tiếng Trung Box
+                    if (z || (isLast && c.zhInterim) || (isLast && c.isTranslating && c.speakerId == 1)) {
+                        zhHtml += `<div style="margin-bottom: 8px;">`;
+                        if (z) zhHtml += `<span class="${colorClass}">${z}</span> `;
+                        if (isLast && c.zhInterim) zhHtml += `<span style="color: #6b7280; font-style: italic;">${c.zhInterim}</span>`;
+                        if (isLast && c.isTranslating && c.speakerId == 1) {
+                            zhHtml += `<span style="color: #3b82f6; font-style: italic; font-size: 0.9em;"> ⏳ Đang dịch...</span>`;
+                        }
+                        zhHtml += `</div>`;
+                    }
+                }
+            });
+
+            if (viHtml !== "") { viContent.innerHTML = viHtml; viContent.scrollTop = viContent.scrollHeight; }
+            if (zhHtml !== "") { zhContent.innerHTML = zhHtml; zhContent.scrollTop = zhContent.scrollHeight; }
+        }
+
+        let globalConversations = [];
+
+        // GOOGLE FREE IMPLEMENTATION
         let isGoogleRecording = false;
-        let googleLang = ''; 
-        let globalGoogleConversations = []; // { id, viFinal, zhFinal, viInterim, zhInterim }
+        let googleLang = 'vi-VN';
+        let googleRecognition = null;
         let googleConversationId = 0;
 
         function initGoogleSpeech() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert("Trình duyệt của bạn không hỗ trợ Web Speech API. Vui lòng dùng Google Chrome.");
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Trình duyệt không hỗ trợ Web Speech API. Hãy dùng Chrome.");
                 return null;
             }
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
 
-            recognition.onstart = () => {
-                isGoogleRecording = true;
-                statusDiv.innerText = `Đang nghe (${googleLang === 'vi-VN' ? 'Tiếng Việt' : 'Tiếng Trung'})...`;
-                statusDiv.style.color = "#ef4444";
-            };
-
             recognition.onresult = async (event) => {
                 let interimTranscript = '';
                 let finalTranscript = '';
-
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
                         finalTranscript += event.results[i][0].transcript;
@@ -424,17 +464,25 @@
                 }
 
                 let currentConvId = googleConversationId;
+                let currentSpeakerId = googleLang === 'vi-VN' ? 1 : 2;
 
                 // Cập nhật giao diện ngay lập tức cho phần chữ tạm (interim)
                 if (googleLang === 'vi-VN') {
-                    updateGoogleUI(currentConvId, finalTranscript, "", interimTranscript, "");
+                    updateGoogleUI(currentConvId, currentSpeakerId, finalTranscript, "", interimTranscript, "");
                 } else {
-                    updateGoogleUI(currentConvId, "", finalTranscript, "", interimTranscript);
+                    updateGoogleUI(currentConvId, currentSpeakerId, "", finalTranscript, "", interimTranscript);
                 }
 
                 // Nếu có câu chốt (final), gọi API Google Translate hoặc Gemini
                 if (finalTranscript.trim() !== '') {
                     googleConversationId++; // Tăng ID ngay lập tức để câu tiếp theo xuống dòng mới
+
+                    // Hiện trạng thái đang dịch
+                    if (googleLang === 'vi-VN') {
+                        updateGoogleUI(currentConvId, currentSpeakerId, finalTranscript, "", "", "", true);
+                    } else {
+                        updateGoogleUI(currentConvId, currentSpeakerId, "", finalTranscript, "", "", true);
+                    }
 
                     const textToTranslate = finalTranscript.trim();
                     const sourceLangCode = googleLang === 'vi-VN' ? 'vi' : 'zh-CN';
@@ -449,8 +497,7 @@
                             if (!geminiKey) {
                                 translatedText = "[Lỗi: Thiếu Gemini API Key trong Cài đặt]";
                             } else {
-                                // Extract history for context
-                                let historyText = globalGoogleConversations.slice(-5).map(c => `> ${c.viFinal || c.zhFinal}`).join("\n");
+                                let historyText = globalConversations.slice(-5).map(c => `> ${c.viText || c.zhText}`).join("\n");
                                 const prompt = `Dưới đây là lịch sử cuộc hội thoại gần nhất (để nắm ngữ cảnh):\n${historyText}\n\nHãy dịch câu sau sang ${targetLangName} sát với ngữ cảnh trên:\n"${textToTranslate}"\nChỉ trả về nội dung bản dịch, tuyệt đối không thêm bất kỳ từ ngữ nào khác.`;
                                 
                                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`, {
@@ -472,19 +519,20 @@
                         }
 
                         if (googleLang === 'vi-VN') {
-                            updateGoogleUI(currentConvId, finalTranscript, translatedText, "", "");
+                            updateGoogleUI(currentConvId, currentSpeakerId, finalTranscript, translatedText, "", "", false);
                         } else {
-                            updateGoogleUI(currentConvId, translatedText, finalTranscript, "", "");
+                            updateGoogleUI(currentConvId, currentSpeakerId, translatedText, finalTranscript, "", "", false);
                         }
                     } catch (err) {
                         console.error("Lỗi dịch:", err);
+                        // Tắt trạng thái loading nếu lỗi
+                        if (googleLang === 'vi-VN') {
+                            updateGoogleUI(currentConvId, currentSpeakerId, finalTranscript, "[Lỗi dịch]", "", "", false);
+                        } else {
+                            updateGoogleUI(currentConvId, currentSpeakerId, "[Lỗi dịch]", finalTranscript, "", "", false);
+                        }
                     }
                 }
-            };
-
-            recognition.onerror = (event) => {
-                console.error("Lỗi Google Speech:", event.error);
-                stopGoogleRecording();
             };
 
             recognition.onend = () => {
@@ -502,45 +550,19 @@
             return recognition;
         }
 
-        function updateGoogleUI(id, viFinal, zhFinal, viInterim, zhInterim) {
-            let conv = globalGoogleConversations.find(c => c.id === id);
+        function updateGoogleUI(id, speakerId, viText, zhText, viInterim, zhInterim, isTranslating = false) {
+            let conv = globalConversations.find(c => c.id === id);
             if (!conv) {
-                conv = { id, viFinal: "", zhFinal: "", viInterim: "", zhInterim: "" };
-                globalGoogleConversations.push(conv);
+                conv = { id, speakerId, viText: "", zhText: "", viInterim: "", zhInterim: "", isTranslating: false };
+                globalConversations.push(conv);
             }
-            if (viFinal) conv.viFinal = viFinal;
-            if (zhFinal) conv.zhFinal = zhFinal;
+            if (viText) conv.viText = viText;
+            if (zhText) conv.zhText = zhText;
             conv.viInterim = viInterim;
             conv.zhInterim = zhInterim;
+            conv.isTranslating = isTranslating;
 
-            renderGoogleSplitView();
-        }
-
-        function renderGoogleSplitView() {
-            let viHtml = "";
-            let zhHtml = "";
-            globalGoogleConversations.forEach(c => {
-                if (c.viFinal || c.viInterim) {
-                    viHtml += `<div style="margin-bottom: 8px;">`;
-                    if (c.viFinal) viHtml += `<span style="color: #1f2937;">${c.viFinal}</span> `;
-                    if (c.viInterim) viHtml += `<span style="color: #6b7280; font-style: italic;">${c.viInterim}</span>`;
-                    viHtml += `</div>`;
-                }
-                if (c.zhFinal || c.zhInterim) {
-                    zhHtml += `<div style="margin-bottom: 8px;">`;
-                    if (c.zhFinal) zhHtml += `<span style="color: #1f2937;">${c.zhFinal}</span> `;
-                    if (c.zhInterim) zhHtml += `<span style="color: #6b7280; font-style: italic;">${c.zhInterim}</span>`;
-                    zhHtml += `</div>`;
-                }
-            });
-            if (viHtml !== "") {
-                viContent.innerHTML = viHtml;
-                viContent.scrollTop = viContent.scrollHeight;
-            }
-            if (zhHtml !== "") {
-                zhContent.innerHTML = zhHtml;
-                zhContent.scrollTop = zhContent.scrollHeight;
-            }
+            renderConversations();
         }
 
         function stopGoogleRecording() {
@@ -559,38 +581,52 @@
         }
 
         document.getElementById('googleViBtn').addEventListener('click', () => {
-            if (isGoogleRecording) {
+            if (isGoogleRecording && googleLang === 'vi-VN') {
                 stopGoogleRecording();
                 return;
             }
+            stopGoogleRecording();
+            if (isRecording) stopRecording();
+            
+            isGoogleRecording = true;
+            document.getElementById('googleViBtn').classList.add('recording');
+            statusDiv.innerText = "Đang nghe tiếng Việt...";
+            statusDiv.style.color = "#ef4444";
+            
             viContent.innerHTML = "";
             zhContent.innerHTML = "";
-            globalGoogleConversations = [];
+            globalConversations = [];
             googleConversationId++;
             googleLang = 'vi-VN';
             googleRecognition = initGoogleSpeech();
             if (googleRecognition) {
                 googleRecognition.lang = googleLang;
                 googleRecognition.start();
-                document.getElementById('googleViBtn').classList.add('recording');
             }
         });
 
         document.getElementById('googleZhBtn').addEventListener('click', () => {
-            if (isGoogleRecording) {
+            if (isGoogleRecording && googleLang === 'zh-CN') {
                 stopGoogleRecording();
                 return;
             }
+            stopGoogleRecording();
+            if (isRecording) stopRecording();
+            
+            isGoogleRecording = true;
+            document.getElementById('googleZhBtn').classList.add('recording');
+            statusDiv.innerText = "Đang nghe tiếng Trung...";
+            statusDiv.style.color = "#ef4444";
+            
             viContent.innerHTML = "";
             zhContent.innerHTML = "";
-            globalGoogleConversations = [];
+            globalConversations = [];
             googleConversationId++;
             googleLang = 'zh-CN';
             googleRecognition = initGoogleSpeech();
             if (googleRecognition) {
                 googleRecognition.lang = googleLang;
                 googleRecognition.start();
-                document.getElementById('googleZhBtn').classList.add('recording');
             }
         });
 
@@ -606,7 +642,6 @@
 
         const recordBtn = document.getElementById('recordBtn');
         const serverRegionSelect = document.getElementById('serverRegion');
-        let speakerSessions = {};
 
         recordBtn.addEventListener('click', async () => {
             if (isRecording) {
@@ -615,37 +650,6 @@
                 await startRecording();
             }
         });
-
-        function renderSplitView() {
-            let viHTML = "";
-            let zhHTML = "";
-            let keys = Object.keys(speakerSessions).sort((a,b) => parseInt(a) - parseInt(b));
-            keys.forEach(speakerId => {
-                let session = speakerSessions[speakerId];
-                let orig = session.originalFinal.join('') + session.originalNonFinal.join('');
-                let trans = session.translatedFinal.join('') + session.translatedNonFinal.join('');
-                if (orig.trim() !== "" || trans.trim() !== "") {
-                    let isOrigChinese = /[\u3400-\u9FBF]/.test(orig);
-                    let viText = isOrigChinese ? trans : orig;
-                    let zhText = isOrigChinese ? orig : trans;
-                    
-                    let viSentences = viText.match(/[^.?!。？！]+[.?!。？！]*/g) || [viText];
-                    let zhSentences = zhText.match(/[^.?!。？！]+[.?!。？！]*/g) || [zhText];
-
-                    viSentences.forEach(s => {
-                        let text = s.trim();
-                        if (text) viHTML += `<div style="margin-bottom: 8px;"><span class="speaker-color-${speakerId}">${text}</span></div>`;
-                    });
-
-                    zhSentences.forEach(s => {
-                        let text = s.trim();
-                        if (text) zhHTML += `<div style="margin-bottom: 8px;"><span class="speaker-color-${speakerId}">${text}</span></div>`;
-                    });
-                }
-            });
-            if (viHTML !== "") { viContent.innerHTML = viHTML; viContent.scrollTop = viContent.scrollHeight; }
-            if (zhHTML !== "") { zhContent.innerHTML = zhHTML; zhContent.scrollTop = zhContent.scrollHeight; }
-        }
 
         async function startRecording() {
             try {
@@ -678,32 +682,52 @@
                     isRecording = true;
                     viContent.innerHTML = "";
                     zhContent.innerHTML = "";
-                    speakerSessions = {};
+                    globalConversations = [];
                 };
 
                 ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
                     if (data.tokens) {
-                        Object.keys(speakerSessions).forEach(id => {
-                            speakerSessions[id].originalNonFinal = [];
-                            speakerSessions[id].translatedNonFinal = [];
+                        // Clear interim text on every event
+                        globalConversations.forEach(c => {
+                            c.viInterim = "";
+                            c.zhInterim = "";
                         });
+
                         data.tokens.forEach(t => {
-                            let speakerId = t.speaker || '1';
+                            let speakerId = parseInt(t.speaker || '1');
                             let isTrans = t.translation_status === 'translation';
-                            if (!speakerSessions[speakerId]) {
-                                speakerSessions[speakerId] = { originalFinal: [], originalNonFinal: [], translatedFinal: [], translatedNonFinal: [] };
+                            let isVietnameseSpeaker = (speakerId === 1);
+                            
+                            let lastConv = globalConversations[globalConversations.length - 1];
+                            if (!lastConv || lastConv.speakerId !== speakerId || lastConv.isFinal) {
+                                lastConv = { id: Date.now() + Math.random(), speakerId: speakerId, viText: "", viInterim: "", zhText: "", zhInterim: "", isTranslating: false, isFinal: false };
+                                globalConversations.push(lastConv);
                             }
-                            let s = speakerSessions[speakerId];
-                            if (isTrans) {
-                                if (t.is_final) s.translatedFinal.push(t.text);
-                                else s.translatedNonFinal.push(t.text);
+                            
+                            if (isVietnameseSpeaker) {
+                                if (isTrans) {
+                                    if (t.is_final) lastConv.zhText += (lastConv.zhText && /[^\s]$/.test(lastConv.zhText) ? " " : "") + t.text;
+                                    else lastConv.zhInterim += t.text;
+                                } else {
+                                    if (t.is_final) lastConv.viText += (lastConv.viText && /[^\s]$/.test(lastConv.viText) ? " " : "") + t.text;
+                                    else lastConv.viInterim += t.text;
+                                }
                             } else {
-                                if (t.is_final) s.originalFinal.push(t.text);
-                                else s.originalNonFinal.push(t.text);
+                                if (isTrans) {
+                                    if (t.is_final) lastConv.viText += (lastConv.viText && /[^\s]$/.test(lastConv.viText) ? " " : "") + t.text;
+                                    else lastConv.viInterim += t.text;
+                                } else {
+                                    if (t.is_final) lastConv.zhText += (lastConv.zhText && /[^\s]$/.test(lastConv.zhText) ? " " : "") + t.text;
+                                    else lastConv.zhInterim += t.text;
+                                }
+                            }
+
+                            if (t.is_final && /[.?!。？！]/.test(t.text)) {
+                                lastConv.isFinal = true;
                             }
                         });
-                        renderSplitView();
+                        renderConversations();
                     }
                 };
                 ws.onclose = () => stopRecording();
@@ -786,26 +810,48 @@
             fakeEvents.forEach((tokens, idx) => {
                 simulateTimer = setTimeout(() => {
                     const eventData = { tokens: tokens };
-                    Object.keys(speakerSessions).forEach(id => {
-                        speakerSessions[id].originalNonFinal = [];
-                        speakerSessions[id].translatedNonFinal = [];
+                    
+                    globalConversations.forEach(c => {
+                        c.viInterim = "";
+                        c.zhInterim = "";
                     });
+
                     eventData.tokens.forEach(t => {
-                        let speakerId = t.speaker || '1';
+                        let speakerId = parseInt(t.speaker || '1');
                         let isTrans = t.translation_status === 'translation';
-                        if (!speakerSessions[speakerId]) {
-                            speakerSessions[speakerId] = { originalFinal: [], originalNonFinal: [], translatedFinal: [], translatedNonFinal: [] };
+                        let isVietnameseSpeaker = (speakerId === 1);
+                        
+                        let lastConv = globalConversations[globalConversations.length - 1];
+                        if (!lastConv || lastConv.speakerId !== speakerId || lastConv.isFinal) {
+                            lastConv = { id: Date.now() + Math.random(), speakerId: speakerId, viText: "", viInterim: "", zhText: "", zhInterim: "", isTranslating: false, isFinal: false };
+                            globalConversations.push(lastConv);
                         }
-                        let s = speakerSessions[speakerId];
-                        if (isTrans) {
-                            if (t.is_final) s.translatedFinal.push(t.text);
-                            else s.translatedNonFinal.push(t.text);
+                        
+                        if (isVietnameseSpeaker) {
+                            if (isTrans) {
+                                if (t.is_final) lastConv.zhText += (lastConv.zhText && /[^\s]$/.test(lastConv.zhText) ? " " : "") + t.text;
+                                else lastConv.zhInterim += t.text;
+                            } else {
+                                if (t.is_final) lastConv.viText += (lastConv.viText && /[^\s]$/.test(lastConv.viText) ? " " : "") + t.text;
+                                else lastConv.viInterim += t.text;
+                            }
                         } else {
-                            if (t.is_final) s.originalFinal.push(t.text);
-                            else s.originalNonFinal.push(t.text);
+                            if (isTrans) {
+                                if (t.is_final) lastConv.viText += (lastConv.viText && /[^\s]$/.test(lastConv.viText) ? " " : "") + t.text;
+                                else lastConv.viInterim += t.text;
+                            } else {
+                                if (t.is_final) lastConv.zhText += (lastConv.zhText && /[^\s]$/.test(lastConv.zhText) ? " " : "") + t.text;
+                                else lastConv.zhInterim += t.text;
+                            }
+                        }
+
+                        if (t.is_final && /[.?!。？！]/.test(t.text)) {
+                            lastConv.isFinal = true;
                         }
                     });
-                    renderSplitView();
+
+                    renderConversations();
+
                     if (idx === fakeEvents.length - 1) {
                         setTimeout(() => {
                             statusDiv.innerText = "Ready (Nhấn Play màu xanh để Giả lập)";
