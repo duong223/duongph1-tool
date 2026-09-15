@@ -423,15 +423,19 @@
                     }
                 }
 
+                let currentConvId = googleConversationId;
+
                 // Cập nhật giao diện ngay lập tức cho phần chữ tạm (interim)
                 if (googleLang === 'vi-VN') {
-                    updateGoogleUI(googleConversationId, finalTranscript, "", interimTranscript, "");
+                    updateGoogleUI(currentConvId, finalTranscript, "", interimTranscript, "");
                 } else {
-                    updateGoogleUI(googleConversationId, "", finalTranscript, "", interimTranscript);
+                    updateGoogleUI(currentConvId, "", finalTranscript, "", interimTranscript);
                 }
 
                 // Nếu có câu chốt (final), gọi API Google Translate hoặc Gemini
                 if (finalTranscript.trim() !== '') {
+                    googleConversationId++; // Tăng ID ngay lập tức để câu tiếp theo xuống dòng mới
+
                     const textToTranslate = finalTranscript.trim();
                     const sourceLangCode = googleLang === 'vi-VN' ? 'vi' : 'zh-CN';
                     const targetLangCode = googleLang === 'vi-VN' ? 'zh-CN' : 'vi';
@@ -468,9 +472,9 @@
                         }
 
                         if (googleLang === 'vi-VN') {
-                            updateGoogleUI(googleConversationId, finalTranscript, translatedText, "", "");
+                            updateGoogleUI(currentConvId, finalTranscript, translatedText, "", "");
                         } else {
-                            updateGoogleUI(googleConversationId, translatedText, finalTranscript, "", "");
+                            updateGoogleUI(currentConvId, translatedText, finalTranscript, "", "");
                         }
                     } catch (err) {
                         console.error("Lỗi dịch:", err);
@@ -504,29 +508,37 @@
                 conv = { id, viFinal: "", zhFinal: "", viInterim: "", zhInterim: "" };
                 globalGoogleConversations.push(conv);
             }
-            if (viFinal) conv.viFinal += (conv.viFinal ? " " : "") + viFinal;
-            if (zhFinal) conv.zhFinal += (conv.zhFinal ? " " : "") + zhFinal;
+            if (viFinal) conv.viFinal = viFinal;
+            if (zhFinal) conv.zhFinal = zhFinal;
             conv.viInterim = viInterim;
             conv.zhInterim = zhInterim;
 
-            renderGoogleUI();
+            renderGoogleSplitView();
         }
 
-        function renderGoogleUI() {
-            let viHTML = "";
-            let zhHTML = "";
+        function renderGoogleSplitView() {
+            let viHtml = "";
+            let zhHtml = "";
             globalGoogleConversations.forEach(c => {
-                let fullVi = c.viFinal + (c.viInterim ? " " + c.viInterim : "");
-                let fullZh = c.zhFinal + (c.zhInterim ? " " + c.zhInterim : "");
-                if (fullVi.trim() !== "") viHTML += `<p class="speaker-color-1">${fullVi}</p>`;
-                if (fullZh.trim() !== "") zhHTML += `<p class="speaker-color-1">${fullZh}</p>`;
+                if (c.viFinal || c.viInterim) {
+                    viHtml += `<div style="margin-bottom: 8px;">`;
+                    if (c.viFinal) viHtml += `<span style="color: #1f2937;">${c.viFinal}</span> `;
+                    if (c.viInterim) viHtml += `<span style="color: #6b7280; font-style: italic;">${c.viInterim}</span>`;
+                    viHtml += `</div>`;
+                }
+                if (c.zhFinal || c.zhInterim) {
+                    zhHtml += `<div style="margin-bottom: 8px;">`;
+                    if (c.zhFinal) zhHtml += `<span style="color: #1f2937;">${c.zhFinal}</span> `;
+                    if (c.zhInterim) zhHtml += `<span style="color: #6b7280; font-style: italic;">${c.zhInterim}</span>`;
+                    zhHtml += `</div>`;
+                }
             });
-            if (viHTML !== "") {
-                viContent.innerHTML = viHTML;
+            if (viHtml !== "") {
+                viContent.innerHTML = viHtml;
                 viContent.scrollTop = viContent.scrollHeight;
             }
-            if (zhHTML !== "") {
-                zhContent.innerHTML = zhHTML;
+            if (zhHtml !== "") {
+                zhContent.innerHTML = zhHtml;
                 zhContent.scrollTop = zhContent.scrollHeight;
             }
         }
