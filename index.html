@@ -226,15 +226,16 @@
                 ws.onopen = () => {
                     ws.send(JSON.stringify({
                         api_key: apiKey,
-                        request: {
-                            model: "stt-rt-v5",
-                            enable_endpoint_detection: true,
-                            enable_speaker_diarization: true,
-                            translation: {
-                                type: "two_way",
-                                language_a: "vi",
-                                language_b: "zh"
-                            }
+                        model: "stt-rt-v5",
+                        audio_format: "s16le",
+                        sample_rate_hertz: 16000,
+                        num_audio_channels: 1,
+                        enable_endpoint_detection: true,
+                        enable_speaker_diarization: true,
+                        translation: {
+                            type: "two_way",
+                            language_a: "vi",
+                            language_b: "zh"
                         }
                     }));
                     
