@@ -253,7 +253,8 @@
                 <label for="providerSelect" style="font-weight: bold; margin-bottom: 5px; display: block; color: #555;">Nền tảng dịch:</label>
                 <select id="providerSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; font-size: 16px; font-weight: bold;">
                     <option value="soniox">Soniox API (Trả phí)</option>
-                    <option value="google" selected>Google Free (Trình duyệt)</option>
+                    <option value="google" selected>Google Dịch (Cơ bản - Miễn phí)</option>
+                    <option value="gemini">Google Gemini AI (Dịch theo ngữ cảnh)</option>
                 </select>
             </div>
             <div id="sonioxSettings" class="hidden">
@@ -263,6 +264,11 @@
                     <option value="wss://stt-rt.jp.soniox.com/transcribe-websocket">🇯🇵 Japan (Nhật Bản)</option>
                     <option value="wss://stt-rt.in.soniox.com/transcribe-websocket">🇮🇳 India (Ấn Độ)</option>
                 </select>
+            </div>
+            <div id="geminiSettings" class="hidden">
+                <label for="geminiApiKey" style="font-weight: bold; margin-bottom: 5px; display: block; color: #555;">Gemini API Key (Miễn phí):</label>
+                <input type="text" id="geminiApiKey" placeholder="Nhập API Key của Google Gemini..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; font-size: 14px; box-sizing: border-box;">
+                <p style="font-size: 12px; color: #888; margin-top: 5px;">*Lấy key miễn phí tại Google AI Studio</p>
             </div>
         </div>
     </div>
@@ -316,6 +322,7 @@
         // DOM Elements
         const providerSelect = document.getElementById('providerSelect');
         const sonioxSettings = document.getElementById('sonioxSettings');
+        const geminiSettings = document.getElementById('geminiSettings');
         const sonioxControls = document.getElementById('sonioxControls');
         const googleControls = document.getElementById('googleControls');
         const viContent = document.getElementById('vi-content');
@@ -324,6 +331,7 @@
         const settingsModal = document.getElementById('settingsModal');
         const openSettingsBtn = document.getElementById('openSettingsBtn');
         const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const geminiApiKeyInput = document.getElementById('geminiApiKey');
 
         openSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('active');
@@ -342,17 +350,28 @@
         providerSelect.addEventListener('change', (e) => {
             if (e.target.value === 'soniox') {
                 sonioxSettings.classList.remove('hidden');
+                geminiSettings.classList.add('hidden');
                 sonioxControls.classList.remove('hidden');
                 googleControls.classList.add('hidden');
                 statusDiv.innerText = "Ready (Soniox API)";
-            } else {
+            } else if (e.target.value === 'gemini') {
                 sonioxSettings.classList.add('hidden');
+                geminiSettings.classList.remove('hidden');
                 sonioxControls.classList.add('hidden');
                 googleControls.classList.remove('hidden');
-                statusDiv.innerText = "Ready (Google Free API)";
+                statusDiv.innerText = "Ready (Gemini AI)";
+            } else {
+                sonioxSettings.classList.add('hidden');
+                geminiSettings.classList.add('hidden');
+                sonioxControls.classList.add('hidden');
+                googleControls.classList.remove('hidden');
+                statusDiv.innerText = "Ready (Google Dịch)";
             }
             if (isRecording) stopRecording();
-            if (googleRecognition) googleRecognition.stop();
+            if (googleRecognition) {
+                isGoogleRecording = false;
+                googleRecognition.stop();
+            }
         });
 
         // -----------------------------------------------------------------
@@ -399,17 +418,42 @@
                     updateGoogleUI(googleConversationId, "", finalTranscript, "", interimTranscript);
                 }
 
-                // Nếu có câu chốt (final), gọi API Google Translate miễn phí
+                // Nếu có câu chốt (final), gọi API Google Translate hoặc Gemini
                 if (finalTranscript.trim() !== '') {
                     const textToTranslate = finalTranscript.trim();
-                    const sourceLang = googleLang === 'vi-VN' ? 'vi' : 'zh-CN';
-                    const targetLang = googleLang === 'vi-VN' ? 'zh-CN' : 'vi';
+                    const sourceLangCode = googleLang === 'vi-VN' ? 'vi' : 'zh-CN';
+                    const targetLangCode = googleLang === 'vi-VN' ? 'zh-CN' : 'vi';
+                    const targetLangName = googleLang === 'vi-VN' ? 'Tiếng Trung (Giản thể)' : 'Tiếng Việt';
                     
                     try {
-                        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(textToTranslate)}`);
-                        const data = await res.json();
                         let translatedText = '';
-                        data[0].forEach(item => { translatedText += item[0]; });
+                        
+                        if (providerSelect.value === 'gemini') {
+                            const geminiKey = geminiApiKeyInput.value.trim();
+                            if (!geminiKey) {
+                                translatedText = "[Lỗi: Thiếu Gemini API Key trong Cài đặt]";
+                            } else {
+                                // Extract history for context
+                                let historyText = globalGoogleConversations.slice(-5).map(c => `> ${c.viFinal || c.zhFinal}`).join("\n");
+                                const prompt = `Dưới đây là lịch sử cuộc hội thoại gần nhất (để nắm ngữ cảnh):\n${historyText}\n\nHãy dịch câu sau sang ${targetLangName} sát với ngữ cảnh trên:\n"${textToTranslate}"\nChỉ trả về nội dung bản dịch, tuyệt đối không thêm bất kỳ từ ngữ nào khác.`;
+                                
+                                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({ contents: [{ parts: [{text: prompt}] }] })
+                                });
+                                const data = await res.json();
+                                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                                    translatedText = data.candidates[0].content.parts[0].text.trim();
+                                } else {
+                                    translatedText = "[Lỗi dịch Gemini]";
+                                }
+                            }
+                        } else {
+                            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLangCode}&tl=${targetLangCode}&dt=t&q=${encodeURIComponent(textToTranslate)}`);
+                            const data = await res.json();
+                            data[0].forEach(item => { translatedText += item[0]; });
+                        }
 
                         if (googleLang === 'vi-VN') {
                             updateGoogleUI(googleConversationId, finalTranscript, translatedText, "", "");
@@ -664,15 +708,39 @@
             isRecording = true;
 
             const fakeEvents = [
-                [{text: "Xin ", is_final: false, speaker: "1", translation_status: "original"}],
-                [{text: "Xin chào ", is_final: false, speaker: "1", translation_status: "original"}, {text: "你 ", is_final: false, speaker: "1", translation_status: "translation"}],
-                [{text: "Xin chào, ", is_final: true, speaker: "1", translation_status: "original"}, {text: "你好, ", is_final: true, speaker: "1", translation_status: "translation"}],
-                [{text: "tôi ", is_final: false, speaker: "1", translation_status: "original"}],
-                [{text: "tôi tên là ", is_final: false, speaker: "1", translation_status: "original"}, {text: "我叫 ", is_final: false, speaker: "1", translation_status: "translation"}],
-                [{text: "tôi tên là Dương.", is_final: true, speaker: "1", translation_status: "original"}, {text: "我叫 Dương。", is_final: true, speaker: "1", translation_status: "translation"}],
-                [{text: "很 ", is_final: false, speaker: "2", translation_status: "original"}],
-                [{text: "很高兴 ", is_final: false, speaker: "2", translation_status: "original"}, {text: "Rất ", is_final: false, speaker: "2", translation_status: "translation"}],
-                [{text: "很高兴认识你", is_final: true, speaker: "2", translation_status: "original"}, {text: "Rất vui được gặp bạn", is_final: true, speaker: "2", translation_status: "translation"}],
+                // Speaker 1 (Vietnamese)
+                [{text: "Chào ", is_final: false, speaker: "1", translation_status: "original"}],
+                [{text: "Chào đối tác, ", is_final: false, speaker: "1", translation_status: "original"}, {text: "你好", is_final: false, speaker: "1", translation_status: "translation"}],
+                [{text: "Chào đối tác, ", is_final: true, speaker: "1", translation_status: "original"}, {text: "你好，合作伙伴，", is_final: true, speaker: "1", translation_status: "translation"}],
+                [{text: "hôm nay ", is_final: false, speaker: "1", translation_status: "original"}],
+                [{text: "hôm nay chúng ta ", is_final: false, speaker: "1", translation_status: "original"}, {text: "今天 ", is_final: false, speaker: "1", translation_status: "translation"}],
+                [{text: "hôm nay chúng ta bàn về ", is_final: false, speaker: "1", translation_status: "original"}],
+                [{text: "hôm nay chúng ta bàn về hợp đồng xuất khẩu ", is_final: false, speaker: "1", translation_status: "original"}, {text: "今天我们讨论出口合同 ", is_final: false, speaker: "1", translation_status: "translation"}],
+                [{text: "hôm nay chúng ta bàn về hợp đồng xuất khẩu gạo nhé.", is_final: true, speaker: "1", translation_status: "original"}, {text: "今天我们来讨论一下大米出口合同吧。", is_final: true, speaker: "1", translation_status: "translation"}],
+                
+                // Pause... Speaker 2 (Chinese)
+                [{text: "好 ", is_final: false, speaker: "2", translation_status: "original"}],
+                [{text: "好的，", is_final: true, speaker: "2", translation_status: "original"}, {text: "Được thôi,", is_final: true, speaker: "2", translation_status: "translation"}],
+                [{text: "你们 ", is_final: false, speaker: "2", translation_status: "original"}],
+                [{text: "你们的价格 ", is_final: false, speaker: "2", translation_status: "original"}, {text: "Giá của ", is_final: false, speaker: "2", translation_status: "translation"}],
+                [{text: "你们的价格是多少？", is_final: true, speaker: "2", translation_status: "original"}, {text: "Giá của các bạn là bao nhiêu?", is_final: true, speaker: "2", translation_status: "translation"}],
+
+                // Speaker 1 (Vietnamese)
+                [{text: "Giá ", is_final: false, speaker: "1", translation_status: "original"}],
+                [{text: "Giá hiện tại ", is_final: false, speaker: "1", translation_status: "original"}, {text: "目前 ", is_final: false, speaker: "1", translation_status: "translation"}],
+                [{text: "Giá hiện tại đang là ", is_final: false, speaker: "1", translation_status: "original"}],
+                [{text: "Giá hiện tại đang là 500 đô la ", is_final: false, speaker: "1", translation_status: "original"}, {text: "目前价格是 500 美元 ", is_final: false, speaker: "1", translation_status: "translation"}],
+                [{text: "Giá hiện tại đang là 500 đô la một tấn.", is_final: true, speaker: "1", translation_status: "original"}, {text: "目前价格是每吨 500 美元。", is_final: true, speaker: "1", translation_status: "translation"}],
+                [{text: "Nếu ", is_final: false, speaker: "1", translation_status: "original"}],
+                [{text: "Nếu bạn mua số lượng lớn, ", is_final: false, speaker: "1", translation_status: "original"}, {text: "如果你大量购买，", is_final: false, speaker: "1", translation_status: "translation"}],
+                [{text: "Nếu bạn mua số lượng lớn, tôi sẽ giảm giá.", is_final: true, speaker: "1", translation_status: "original"}, {text: "如果你大量购买，我会给你打折。", is_final: true, speaker: "1", translation_status: "translation"}],
+
+                // Speaker 2 (Chinese)
+                [{text: "太 ", is_final: false, speaker: "2", translation_status: "original"}],
+                [{text: "太贵了！", is_final: true, speaker: "2", translation_status: "original"}, {text: "Đắt quá!", is_final: true, speaker: "2", translation_status: "translation"}],
+                [{text: "能不能 ", is_final: false, speaker: "2", translation_status: "original"}],
+                [{text: "能不能降到 ", is_final: false, speaker: "2", translation_status: "original"}, {text: "Có thể giảm ", is_final: false, speaker: "2", translation_status: "translation"}],
+                [{text: "能不能降到 480 美元？", is_final: true, speaker: "2", translation_status: "original"}, {text: "Có thể giảm xuống 480 USD không?", is_final: true, speaker: "2", translation_status: "translation"}]
             ];
 
             let delay = 0;
