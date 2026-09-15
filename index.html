@@ -150,6 +150,14 @@
     </div>
 
     <div class="controls">
+        <div style="margin-bottom: 15px; width: 100%; text-align: center;">
+            <label for="serverRegion" style="font-weight: bold; margin-right: 10px; color: #555;">Chọn Server Soniox:</label>
+            <select id="serverRegion" style="padding: 8px 15px; border-radius: 8px; border: 1px solid #ddd; outline: none; font-size: 16px;">
+                <option value="wss://stt-rt.soniox.com/transcribe-websocket">🇺🇸 US (Mặc định)</option>
+                <option value="wss://stt-rt.jp.soniox.com/transcribe-websocket">🇯🇵 Japan (Nhật Bản)</option>
+                <option value="wss://stt-rt.in.soniox.com/transcribe-websocket">🇮🇳 India (Ấn Độ)</option>
+            </select>
+        </div>
         <div style="display: flex; gap: 20px;">
             <button class="record-btn" id="recordBtn" title="Dùng Mic thực (Cần API Key)">
                 <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
@@ -163,7 +171,6 @@
 
     <script>
         const apiKey = "snx_proj_AdKkf8QwONzJ8KSFe4TpKoogTQPRHQKOGSDIEZwPX-V1.NAphCZejL5ZS2-tjsKDPznsKZdAWLcwBwbFSGywvEpHEpCmrDpu91B7xfiZbazGX0KPP7SgnGHIxoH8zxzQ7DA.swtJ5Q";
-        const wsUrl = "wss://stt-rt.soniox.com/transcribe-websocket";
         
         let ws = null;
         let audioContext = null;
@@ -175,6 +182,7 @@
         const viContent = document.getElementById('vi-content');
         const zhContent = document.getElementById('zh-content');
         const statusDiv = document.getElementById('status');
+        const serverRegionSelect = document.getElementById('serverRegion');
 
         let speakerSessions = {};
         
@@ -226,6 +234,7 @@
                 const source = audioContext.createMediaStreamSource(mediaStream);
                 processor = audioContext.createScriptProcessor(4096, 1, 1);
                 
+                const wsUrl = serverRegionSelect.value;
                 ws = new WebSocket(wsUrl);
                 
                 ws.onopen = () => {
