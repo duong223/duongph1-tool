@@ -252,9 +252,9 @@
             <div>
                 <label for="providerSelect" style="font-weight: bold; margin-bottom: 5px; display: block; color: #555;">Nền tảng dịch:</label>
                 <select id="providerSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; font-size: 16px; font-weight: bold;">
-                    <option value="soniox">Soniox API (Trả phí)</option>
-                    <option value="google" selected>Google Dịch (Cơ bản - Miễn phí)</option>
-                    <option value="gemini">Google Gemini AI (Dịch theo ngữ cảnh)</option>
+                    <option value="soniox">Soniox API</option>
+                    <option value="google" selected>Google Dịch (Cơ bản)</option>
+                    <option value="gemini">Google Gemini AI</option>
                 </select>
             </div>
             <div id="sonioxSettings" class="hidden">
@@ -266,15 +266,14 @@
                 </select>
             </div>
             <div id="geminiSettings" class="hidden">
-                <label for="geminiApiKey" style="font-weight: bold; margin-bottom: 5px; display: block; color: #555;">Gemini API Key (Miễn phí):</label>
+                <label for="geminiApiKey" style="font-weight: bold; margin-bottom: 5px; display: block; color: #555;">Gemini API Key:</label>
                 <input type="text" id="geminiApiKey" placeholder="Nhập API Key của Google Gemini..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; font-size: 14px; box-sizing: border-box;">
-                <p style="font-size: 12px; color: #888; margin-top: 5px;">*Lấy key miễn phí tại Google AI Studio</p>
+                <p style="font-size: 12px; color: #888; margin-top: 5px;">*Lấy key tại Google AI Studio</p>
             </div>
         </div>
     </div>
 
     <h1>duongph1 tool</h1>
-    <p class="subtitle">Dịch thuật Real-time 2 chiều (Việt ↔ Trung)</p>
 
     <div class="container">
         <div class="split-view">
@@ -297,10 +296,10 @@
     <div class="controls">
         <!-- Soniox Controls -->
         <div id="sonioxControls" class="hidden" style="display: flex; gap: 20px;">
-            <button class="record-btn" id="recordBtn" title="Dùng Mic thực (Cần API Key)">
+            <button class="record-btn" id="recordBtn" title="Dùng Mic thực">
                 <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
             </button>
-            <button class="record-btn" id="simulateBtn" style="background-color: #3b82f6;" title="Giả lập API để Test UI">
+            <button class="record-btn" id="simulateBtn" style="background-color: #3b82f6;" title="Giả lập API">
                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             </button>
         </div>
@@ -526,7 +525,11 @@
             }
             document.getElementById('googleViBtn').classList.remove('recording');
             document.getElementById('googleZhBtn').classList.remove('recording');
-            statusDiv.innerText = "Ready (Google Free API)";
+            if (providerSelect.value === 'gemini') {
+                statusDiv.innerText = "Ready (Gemini AI)";
+            } else {
+                statusDiv.innerText = "Ready (Google Dịch)";
+            }
             statusDiv.style.color = "#888";
         }
 
