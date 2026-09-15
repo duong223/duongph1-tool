@@ -267,7 +267,7 @@
             </div>
             <div id="geminiSettings" class="hidden">
                 <label for="geminiApiKey" style="font-weight: bold; margin-bottom: 5px; display: block; color: #555;">Gemini API Key:</label>
-                <input type="text" id="geminiApiKey" placeholder="Nhập API Key của Google Gemini..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; font-size: 14px; box-sizing: border-box;">
+                <input type="text" id="geminiApiKey" placeholder="Nhập API Key..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; font-size: 14px; box-sizing: border-box;">
                 <p style="font-size: 12px; color: #888; margin-top: 5px;">*Lấy key tại Google AI Studio</p>
             </div>
         </div>
@@ -331,6 +331,15 @@
         const openSettingsBtn = document.getElementById('openSettingsBtn');
         const closeSettingsBtn = document.getElementById('closeSettingsBtn');
         const geminiApiKeyInput = document.getElementById('geminiApiKey');
+
+        // Load settings from LocalStorage
+        if (localStorage.getItem('geminiApiKey')) {
+            geminiApiKeyInput.value = localStorage.getItem('geminiApiKey');
+        }
+        
+        geminiApiKeyInput.addEventListener('change', (e) => {
+            localStorage.setItem('geminiApiKey', e.target.value);
+        });
 
         openSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('active');
