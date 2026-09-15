@@ -12,13 +12,13 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100vh;
+            height: 100dvh;
             margin: 0;
             padding: 20px;
             box-sizing: border-box;
         }
-        h1 { color: #FF6C47; margin-bottom: 5px; }
-        p.subtitle { color: #666; margin-bottom: 20px; text-align: center; }
+        h1 { color: #FF6C47; margin-bottom: 5px; font-size: 28px; text-align: center; }
+        p.subtitle { color: #666; margin-bottom: 15px; text-align: center; font-size: 14px; }
         
         .container {
             width: 100%;
@@ -26,29 +26,24 @@
             display: flex;
             flex-direction: column;
             flex: 1;
-            gap: 20px;
+            gap: 15px;
             overflow: hidden;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .split-view {
             display: flex;
             flex: 1;
-            gap: 20px;
+            gap: 15px;
             overflow: hidden;
-        }
-
-        @media (max-width: 768px) {
-            .split-view {
-                flex-direction: column;
-            }
+            flex-direction: row;
         }
 
         .lang-box {
             flex: 1;
             background: white;
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -59,8 +54,8 @@
         .lang-box.zh { border-color: #ef4444; }
 
         .box-header {
-            padding: 15px 20px;
-            font-size: 18px;
+            padding: 10px 15px;
+            font-size: 16px;
             font-weight: bold;
             color: white;
             display: flex;
@@ -73,10 +68,10 @@
 
         .box-content {
             flex: 1;
-            padding: 20px;
+            padding: 15px;
             overflow-y: auto;
-            font-size: 24px;
-            line-height: 1.6;
+            font-size: 20px;
+            line-height: 1.5;
             color: #1f2937;
         }
 
@@ -89,11 +84,12 @@
             flex-direction: column;
             align-items: center;
             background: white;
-            padding: 20px;
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            padding: 15px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             width: 100%;
             max-width: 1000px;
+            flex-shrink: 0;
         }
 
         .record-btn {
@@ -101,11 +97,10 @@
             color: white;
             border: none;
             border-radius: 50%;
-            width: 80px;
-            height: 80px;
-            font-size: 16px;
+            width: 60px;
+            height: 60px;
             cursor: pointer;
-            box-shadow: 0 8px 20px rgba(255, 108, 71, 0.4);
+            box-shadow: 0 4px 15px rgba(255, 108, 71, 0.4);
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
@@ -113,38 +108,60 @@
         }
         .record-btn.recording {
             background-color: #ef4444;
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
             animation: pulse 1.5s infinite;
         }
-        .record-btn svg { width: 32px; height: 32px; fill: currentColor; }
+        .record-btn svg { width: 28px; height: 28px; fill: currentColor; }
 
         .google-btn {
             background-color: #10b981;
             color: white;
             border: none;
             border-radius: 12px;
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 12px 20px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.2s ease;
             box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 140px;
         }
         .google-btn.recording {
             background-color: #ef4444;
             animation: pulse 1.5s infinite;
         }
 
+        #googleControls {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
         @keyframes pulse {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
-        .status { margin-top: 15px; font-weight: bold; color: #888; }
+        .status { margin-top: 10px; font-weight: bold; color: #888; font-size: 14px; text-align: center; }
         .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h1 { font-size: 24px; margin-bottom: 2px; }
+            p.subtitle { margin-bottom: 10px; font-size: 13px; }
+            .split-view { flex-direction: column; gap: 10px; }
+            .box-content { font-size: 16px; padding: 10px; }
+            .box-header { padding: 8px 12px; font-size: 15px; }
+            .controls { padding: 10px; }
+            .record-btn { width: 55px; height: 55px; }
+            .google-btn { font-size: 14px; padding: 10px 15px; }
+        }
     </style>
 </head>
 <body>
@@ -200,7 +217,7 @@
         </div>
 
         <!-- Google Controls -->
-        <div id="googleControls" style="display: flex; gap: 20px;">
+        <div id="googleControls">
             <button class="google-btn" id="googleViBtn">
                 🎤 Nói Tiếng Việt
             </button>
@@ -311,7 +328,15 @@
             };
 
             recognition.onend = () => {
-                stopGoogleRecording();
+                if (isGoogleRecording) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        stopGoogleRecording();
+                    }
+                } else {
+                    stopGoogleRecording();
+                }
             };
 
             return recognition;
@@ -351,10 +376,10 @@
         }
 
         function stopGoogleRecording() {
+            isGoogleRecording = false;
             if (googleRecognition) {
                 googleRecognition.stop();
             }
-            isGoogleRecording = false;
             document.getElementById('googleViBtn').classList.remove('recording');
             document.getElementById('googleZhBtn').classList.remove('recording');
             statusDiv.innerText = "Ready (Google Free API)";
