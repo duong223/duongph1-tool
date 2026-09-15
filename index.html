@@ -628,8 +628,19 @@
                     let isOrigChinese = /[\u3400-\u9FBF]/.test(orig);
                     let viText = isOrigChinese ? trans : orig;
                     let zhText = isOrigChinese ? orig : trans;
-                    if (viText) viHTML += `<p class="speaker-color-${speakerId}">${viText}</p>`;
-                    if (zhText) zhHTML += `<p class="speaker-color-${speakerId}">${zhText}</p>`;
+                    
+                    let viSentences = viText.match(/[^.?!。？！]+[.?!。？！]*/g) || [viText];
+                    let zhSentences = zhText.match(/[^.?!。？！]+[.?!。？！]*/g) || [zhText];
+
+                    viSentences.forEach(s => {
+                        let text = s.trim();
+                        if (text) viHTML += `<div style="margin-bottom: 8px;"><span class="speaker-color-${speakerId}">${text}</span></div>`;
+                    });
+
+                    zhSentences.forEach(s => {
+                        let text = s.trim();
+                        if (text) zhHTML += `<div style="margin-bottom: 8px;"><span class="speaker-color-${speakerId}">${text}</span></div>`;
+                    });
                 }
             });
             if (viHTML !== "") { viContent.innerHTML = viHTML; viContent.scrollTop = viContent.scrollHeight; }
