@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>duongph1 tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9fafb;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 { color: #FF6C47; margin-bottom: 5px; }
+        p.subtitle { color: #666; margin-bottom: 20px; }
+        
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 20px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .split-view {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .split-view {
+                flex-direction: column;
+            }
+        }
+
+        .lang-box {
+            flex: 1;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 2px solid transparent;
+        }
+
+        .lang-box.vi { border-color: #3b82f6; }
+        .lang-box.zh { border-color: #ef4444; }
+
+        .box-header {
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lang-box.vi .box-header { background: #3b82f6; }
+        .lang-box.zh .box-header { background: #ef4444; }
+
+        .box-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 24px;
+            line-height: 1.6;
+            color: #1f2937;
+        }
+
+        .speaker-color-1 { color: #1f2937; }
+        .speaker-color-2 { color: #047857; }
+        .speaker-color-3 { color: #6d28d9; }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .record-btn {
+            background-color: #FF6C47;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 108, 71, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .record-btn.recording {
+            background-color: #ef4444;
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+            animation: pulse 1.5s infinite;
+        }
+        .record-btn svg { width: 32px; height: 32px; fill: currentColor; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .status { margin-top: 15px; font-weight: bold; color: #888; }
+    </style>
+</head>
+<body>
+
+    <h1>duongph1 tool</h1>
+    <p class="subtitle">Vietnamese ↔ Chinese (Auto-detect & Route)</p>
+
+    <div class="container">
+        <div class="split-view">
+            <div class="lang-box vi">
+                <div class="box-header">🇻🇳 Tiếng Việt</div>
+                <div class="box-content" id="vi-content">
+                    <span style="color: #aaa; font-size: 18px;">Văn bản tiếng Việt sẽ hiển thị ở đây...</span>
+                </div>
+            </div>
+            
+            <div class="lang-box zh">
+                <div class="box-header">🇨🇳 Tiếng Trung (中文)</div>
+                <div class="box-content" id="zh-content">
+                    <span style="color: #aaa; font-size: 18px;">中文文本将显示在这里...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="record-btn" id="recordBtn">
+            <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+        </button>
+        <div class="status" id="status">Ready</div>
+    </div>
+
+    <script>
+        const apiKey = "snx_proj_AdKkf8QwONzJ8KSFe4TpKoogTQPRHQKOGSDIEZwPX-V1.NAphCZejL5ZS2-tjsKDPznsKZdAWLcwBwbFSGywvEpHEpCmrDpu91B7xfiZbazGX0KPP7SgnGHIxoH8zxzQ7DA.swtJ5Q";
+        const wsUrl = "wss://stt-rt.soniox.com/transcribe-websocket";
+        
+        let ws = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let processor = null;
+        let isRecording = false;
+
+        const recordBtn = document.getElementById('recordBtn');
+        const viContent = document.getElementById('vi-content');
+        const zhContent = document.getElementById('zh-content');
+        const statusDiv = document.getElementById('status');
+
+        let speakerSessions = {};
+        
+        recordBtn.addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        });
+
+        function renderSplitView() {
+            let viHTML = "";
+            let zhHTML = "";
+            
+            let keys = Object.keys(speakerSessions).sort((a,b) => parseInt(a) - parseInt(b));
+            
+            keys.forEach(speakerId => {
+                let session = speakerSessions[speakerId];
+                let orig = session.originalFinal.join('') + session.originalNonFinal.join('');
+                let trans = session.translatedFinal.join('') + session.translatedNonFinal.join('');
+                
+                if (orig.trim() !== "" || trans.trim() !== "") {
+                    // Check if original contains Chinese characters
+                    let isOrigChinese = /[\u3400-\u9FBF]/.test(orig);
+                    
+                    let viText = isOrigChinese ? trans : orig;
+                    let zhText = isOrigChinese ? orig : trans;
+                    
+                    if (viText) viHTML += `<p class="speaker-color-${speakerId}">${viText}</p>`;
+                    if (zhText) zhHTML += `<p class="speaker-color-${speakerId}">${zhText}</p>`;
+                }
+            });
+
+            if (viHTML !== "") {
+                viContent.innerHTML = viHTML;
+                viContent.scrollTop = viContent.scrollHeight;
+            }
+            if (zhHTML !== "") {
+                zhContent.innerHTML = zhHTML;
+                zhContent.scrollTop = zhContent.scrollHeight;
+            }
+        }
+
+        async function startRecording() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                processor = audioContext.createScriptProcessor(4096, 1, 1);
+                
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({
+                        api_key: apiKey,
+                        request: {
+                            model: "stt-rt-v5",
+                            enable_endpoint_detection: true,
+                            enable_speaker_diarization: true,
+                            translation: {
+                                type: "two_way",
+                                language_a: "vi",
+                                language_b: "zh"
+                            }
+                        }
+                    }));
+                    
+                    statusDiv.innerText = "Listening (Việt ↔ Trung)...";
+                    statusDiv.style.color = "#ef4444";
+                    recordBtn.classList.add('recording');
+                    isRecording = true;
+                    
+                    viContent.innerHTML = "";
+                    zhContent.innerHTML = "";
+                    speakerSessions = {};
+                };
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.tokens) {
+                        Object.keys(speakerSessions).forEach(id => {
+                            speakerSessions[id].originalNonFinal = [];
+                            speakerSessions[id].translatedNonFinal = [];
+                        });
+
+                        data.tokens.forEach(t => {
+                            let speakerId = t.speaker || '1';
+                            let isTrans = t.translation_status === 'translation';
+                            let isFinal = t.is_final;
+                            
+                            if (!speakerSessions[speakerId]) {
+                                speakerSessions[speakerId] = {
+                                    originalFinal: [], originalNonFinal: [],
+                                    translatedFinal: [], translatedNonFinal: []
+                                };
+                            }
+
+                            let s = speakerSessions[speakerId];
+
+                            if (isTrans) {
+                                if (isFinal) s.translatedFinal.push(t.text);
+                                else s.translatedNonFinal.push(t.text);
+                            } else {
+                                if (isFinal) s.originalFinal.push(t.text);
+                                else s.originalNonFinal.push(t.text);
+                            }
+                        });
+                        
+                        renderSplitView();
+                    }
+                };
+
+                ws.onclose = () => stopRecording();
+
+                processor.onaudioprocess = (e) => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const pcm16 = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            pcm16[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+                        }
+                        ws.send(pcm16.buffer);
+                    }
+                };
+
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+            } catch (err) {
+                alert("Error accessing microphone: " + err.message);
+            }
+        }
+
+        function stopRecording() {
+            if (ws) { ws.close(); ws = null; }
+            if (mediaStream) { mediaStream.getTracks().forEach(track => track.stop()); mediaStream = null; }
+            if (processor) { processor.disconnect(); processor = null; }
+            if (audioContext) { audioContext.close(); audioContext = null; }
+            
+            statusDiv.innerText = "Ready";
+            statusDiv.style.color = "#888";
+            recordBtn.classList.remove('recording');
+            isRecording = false;
+        }
+    </script>
+</body>
+</html>
