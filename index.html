@@ -508,6 +508,8 @@
                                 const data = await res.json();
                                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                                     translatedText = data.candidates[0].content.parts[0].text.trim();
+                                } else if (data.error && data.error.message) {
+                                    translatedText = `[Lỗi Gemini: ${data.error.message}]`;
                                 } else {
                                     translatedText = "[Lỗi dịch Gemini]";
                                 }
@@ -524,12 +526,12 @@
                             updateGoogleUI(currentConvId, currentSpeakerId, translatedText, finalTranscript, "", "", false);
                         }
                     } catch (err) {
-                        console.error("Lỗi dịch:", err);
-                        // Tắt trạng thái loading nếu lỗi
+                        console.error("Lỗi dịch chi tiết:", err);
+                        let errMsg = `[Lỗi: ${err.message}]`;
                         if (googleLang === 'vi-VN') {
-                            updateGoogleUI(currentConvId, currentSpeakerId, finalTranscript, "[Lỗi dịch]", "", "", false);
+                            updateGoogleUI(currentConvId, currentSpeakerId, finalTranscript, errMsg, "", "", false);
                         } else {
-                            updateGoogleUI(currentConvId, currentSpeakerId, "[Lỗi dịch]", finalTranscript, "", "", false);
+                            updateGoogleUI(currentConvId, currentSpeakerId, errMsg, finalTranscript, "", "", false);
                         }
                     }
                 }
